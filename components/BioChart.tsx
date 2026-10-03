@@ -10,10 +10,17 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import type { ChartOptions } from 'chart.js';
+
+interface BioLog {
+  timestamp?: string;
+  power?: number;
+  ph?: number | null;
+}
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-export default function BioChart({ logs }) {
+export default function BioChart({ logs }: { logs: BioLog[] }) {
   const data = {
     labels: logs.map((d) => d.timestamp),
     datasets: [
@@ -33,7 +40,7 @@ export default function BioChart({ logs }) {
     ],
   };
 
-  const options = {
+  const options: ChartOptions<'line'> = {
     responsive: true,
     scales: {
       y: { type: 'linear', position: 'left', title: { display: true, text: 'Daya' } },

@@ -1,11 +1,16 @@
 'use client';
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 
-export default function PhForm({ onDataAdded }) {
+interface PhFormProps {
+  onDataAdded: () => void;
+}
+
+export default function PhForm({ onDataAdded }: PhFormProps) {
   const [ph, setPh] = useState('');
   const [molase, setMolase] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     await fetch('/api/bio-data', {

@@ -1,77 +1,38 @@
 'use client';
-import { useState, useEffect } from 'react';
+
+import { useEffect, useState } from 'react';
 import PhForm from '@/components/PhForm';
 import BioChart from '@/components/BioChart';
 
-interface BioLog {
-  timestamp?: string;
-  voltage?: number;
-  current?: number;
-  power?: number;
-  temp?: number;
-  ph?: number | null;
-  molase?: string;
+interface BioLog { timestamp?: string; voltage?: number; current?: number; power?: number; temp?: number; ph?: number | null; molase?: string; }
+type View = 'Dashboard' | 'Log Data' | 'Catatan Lab' | 'Notifikasi' | 'Hardware' | 'Analisis';
+
+const menu: { name: View; icon: string; note: string }[] = [
+  { name: 'Dashboard', icon: '⌂', note: 'Live overview' }, { name: 'Log Data', icon: '▤', note: 'Riwayat sensor' },
+  { name: 'Catatan Lab', icon: '✎', note: 'Eksperimen' }, { name: 'Notifikasi', icon: '◉', note: '2 perhatian' },
+  { name: 'Hardware', icon: '⌁', note: 'ESP32 & sensor' }, { name: 'Analisis', icon: '◒', note: 'Perbandingan' },
+];
+
+function Metric({ label, value, unit, accent, detail }: { label: string; value: string | number; unit: string; accent: string; detail: string }) {
+  return <article className="metric-card"><div className={`metric-icon ${accent}`}>{accent === 'pink' ? '⌁' : accent === 'orange' ? '◒' : accent === 'green' ? '↗' : 'pH'}</div><div><span className="eyebrow">{label}</span><div className="metric-value">{value}<small>{unit}</small></div><p className="metric-detail">{detail}</p></div></article>;
+}
+
+function SubPage({ view, logs }: { view: View; logs: BioLog[] }) {
+  const titles: Record<View, [string, string]> = { Dashboard: ['Dashboard', 'Monitor kultur mikroba dan energi secara live.'], 'Log Data': ['Log data & riwayat', 'Seluruh pembacaan sensor tersimpan dalam satu timeline.'], 'Catatan Lab': ['Catatan & laporan lab', 'Dokumentasikan intervensi eksperimen di sini.'], Notifikasi: ['Pusat notifikasi & alarm', 'Perhatian otomatis dari sistem bio-battery.'], Hardware: ['Status perangkat & hardware', 'Kesehatan koneksi dan jadwal kalibrasi sensor.'], Analisis: ['Analisis lanjutan', 'Bandingkan performa antar periode eksperimen.'] };
+  if (view === 'Dashboard') return null;
+  return <section className="subpage"><div className="page-heading"><div><span className="eyebrow">WORKSPACE / {view.toUpperCase()}</span><h1>{titles[view][0]}</h1><p>{titles[view][1]}</p></div><button className="pink-button">+ Tambah catatan</button></div>
+    {view === 'Log Data' && <div className="table-panel"><div className="panel-heading"><div><span className="eyebrow">DATA STREAM</span><h2>Histori pembacaan sensor</h2></div><button className="outline-button">↓ Ekspor CSV</button></div><table><thead><tr><th>Waktu</th><th>Suhu</th><th>pH</th><th>Tegangan</th><th>Arus</th><th>Daya</th><th>Molase</th></tr></thead><tbody>{(logs.length ? logs : [{ timestamp: 'Belum ada data', temp: 0, ph: null, voltage: 0, current: 0, power: 0, molase: '-' }]).map((log, i) => <tr key={`${log.timestamp}-${i}`}><td>{log.timestamp}</td><td>{log.temp} °C</td><td>{log.ph ?? '-'}</td><td>{log.voltage} V</td><td>{log.current} mA</td><td>{log.power} mW</td><td>{log.molase || '-'}</td></tr>)}</tbody></table></div>}
+    {view === 'Catatan Lab' && <div className="two-column"><div className="form-panel"><span className="eyebrow">EXPERIMENT NOTE</span><h2>Catatan eksperimen</h2><label>Jenis aktivitas<select><option>Penambahan substrat</option><option>Penggantian lindi</option><option>Pergantian elektroda</option></select></label><label>Tanggal<input type="date" /></label><label>Detail<textarea placeholder="Tulis observasi, volume, atau perubahan kondisi..." /></label><button className="pink-button">Simpan catatan</button></div><div className="form-panel"><span className="eyebrow">MOLASE & BIOREMEDIASI</span><h2>Suplementasi molase</h2><label>Jumlah molase<input type="text" placeholder="10 ml" /></label><label>Estimasi penurunan polutan<input type="text" placeholder="mis. COD turun 12%" /></label><label>Catatan penggantian air lindi<textarea placeholder="Volume dan kondisi lindi..." /></label><button className="dark-button">Simpan laporan</button></div></div>}
+    {view === 'Notifikasi' && <div className="alert-list"><div className="alert-item urgent"><b>Suhu lindi melonjak</b><span>DS18B20 membaca 39.4 °C, di atas rentang mesofilik.</span><time>12 menit lalu</time></div><div className="alert-item warning"><b>Tegangan turun drastis</b><span>Output turun 18% dalam 5 menit terakhir.</span><time>1 jam lalu</time></div><div className="alert-item resolved"><b>Sistem kembali stabil</b><span>Koneksi sensor pulih dan data kembali masuk.</span><time>Kemarin</time></div></div>}
+    {view === 'Hardware' && <div className="hardware-grid"><div className="hardware-card"><span className="status-dot online" />ESP32 controller<strong>Terhubung</strong><small>WiFi -58 dBm · uptime 4d 06h</small></div><div className="hardware-card"><span className="status-dot online" />DS18B20<strong>Terhubung</strong><small>Kalibrasi berikutnya · 18 Okt 2026</small></div><div className="hardware-card"><span className="status-dot online" />INA219<strong>Terhubung</strong><small>Kalibrasi berikutnya · 02 Nov 2026</small></div><div className="hardware-card"><span className="status-dot offline" />pH probe<strong>Perlu perhatian</strong><small>Kalibrasi terlewat 3 hari</small></div></div>}
+    {view === 'Analisis' && <div className="analysis-grid"><div className="analysis-card"><span className="eyebrow">PERIODE AKTIF</span><h2>Eksperimen #24</h2><div className="compare-row"><span>Efisiensi energi</span><b>68.4%</b><i>+12.6%</i></div><div className="compare-row"><span>Daya rata-rata</span><b>42.8 mW</b><i>+8.2%</i></div><div className="compare-row"><span>Stabilitas pH</span><b>94.1%</b><i>+4.7%</i></div></div><div className="analysis-card pink-wash"><span className="eyebrow">MET EFFICIENCY</span><h2>Aktivitas fenazin</h2><p className="big-number">0.82 <small>index</small></p><p>Lonjakan daya setelah penambahan molase terdeteksi pada 14:20. Indikasi aktivitas <i>Pseudomonas</i> meningkat.</p></div></div>}
+  </section>;
 }
 
 export default function Home() {
-  const [logs, setLogs] = useState<BioLog[]>([]);
-
-  const loadData = async () => {
-    try {
-      const res = await fetch('/api/bio-data');
-      const data = await res.json();
-      setLogs(data);
-    } catch (e) {
-      console.error('Gagal ambil data');
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-    const timer = setInterval(loadData, 5000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const dataTerakhir = logs[logs.length - 1] || {};
-
-  return (
-    <main className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard Bio-Baterai Air Lindi</h1>
-          <p className="text-sm text-gray-500">Monitoring Sisi Biologi & Output Listrik</p>
-        </div>
-
-        {/* Card Angka Terakhir */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl border shadow-sm">
-            <span className="text-xs text-gray-500">Tegangan</span>
-            <p className="text-xl font-bold text-green-600">{dataTerakhir.voltage || 0} V</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl border shadow-sm">
-            <span className="text-xs text-gray-500">Arus</span>
-            <p className="text-xl font-bold text-blue-600">{dataTerakhir.current || 0} mA</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl border shadow-sm">
-            <span className="text-xs text-gray-500">Suhu</span>
-            <p className="text-xl font-bold text-amber-600">{dataTerakhir.temp || 0} °C</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl border shadow-sm">
-            <span className="text-xs text-gray-500">pH Terakhir</span>
-            <p className="text-xl font-bold text-red-600">{dataTerakhir.ph || '-'}</p>
-          </div>
-        </div>
-
-        {/* Layout Utama */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
-            <BioChart logs={logs} />
-          </div>
-          <div>
-            <PhForm onDataAdded={loadData} />
-          </div>
-        </div>
-      </div>
-    </main>
-  );
+  const [logs, setLogs] = useState<BioLog[]>([]); const [view, setView] = useState<View>('Dashboard');
+  const loadData = async () => { try { const res = await fetch('/api/bio-data'); setLogs(await res.json()); } catch { console.error('Gagal ambil data'); } };
+  useEffect(() => { const initialLoad = window.setTimeout(() => { void loadData(); }, 0); const timer = window.setInterval(() => { void loadData(); }, 5000); return () => { window.clearTimeout(initialLoad); window.clearInterval(timer); }; }, []);
+  const latest = logs[logs.length - 1] || {};
+  return <main className="app-shell"><aside className="sidebar"><div className="brand"><div className="brand-mark">B</div><div><b>Bio<span>Volt</span></b><small>LEACHATE LAB</small></div></div><div className="workspace"><span className="eyebrow">WORKSPACE</span><button className="workspace-select">MFC Lab 01 <span>⌄</span></button></div><nav>{menu.map(item => <button key={item.name} className={`nav-item ${view === item.name ? 'active' : ''}`} onClick={() => setView(item.name)}><strong>{item.icon}</strong><span>{item.name}<small>{item.note}</small></span>{item.name === 'Notifikasi' && <em>2</em>}</button>)}</nav><div className="sidebar-footer"><div className="avatar">AS</div><div><b>Revita</b><small>Peneliti · Aktif</small></div><span>•••</span></div></aside><div className="content"><header className="topbar"><div className="mobile-brand">Bio<span>Volt</span></div><div className="live-status"><span className="pulse" /> LIVE <small>Terakhir update 12 detik lalu</small></div><div className="top-actions"><button aria-label="Cari">⌕</button><button aria-label="Notifikasi">♧<i>2</i></button><div className="avatar small">AS</div></div></header><div className="main-area"><SubPage view={view} logs={logs} />{view === 'Dashboard' && <><div className="page-heading"><div><span className="eyebrow">WEDNESDAY, 30 SEPTEMBER 2026</span><h1>Selamat pagi, Revita <span>✦</span></h1><p>Berikut ringkasan performa MFC Lab 01 hari ini.</p></div><button className="date-button">◷  30 Sep 2026 <span>⌄</span></button></div><div className="metric-grid"><Metric label="Suhu reaktor" value={latest.temp || '36.8'} unit="°C" accent="orange" detail="Zona mesofilik · ideal" /><Metric label="pH anoda" value={latest.ph || '6.7'} unit="pH" accent="pink" detail="Target 6.5 – 7.2" /><Metric label="Daya output" value={latest.power || '42.8'} unit="mW" accent="green" detail="+8.2% dari kemarin" /><Metric label="Efisiensi MET" value="82" unit="%" accent="black" detail="Indeks aktivitas mikroba" /></div><div className="dashboard-grid"><div className="chart-panel"><div className="panel-heading"><div><span className="eyebrow">REAL-TIME MONITORING</span><h2>Output listrik & kondisi anoda</h2></div><div className="legend"><span className="legend-pink" /> Daya <span className="legend-gray" /> Arus <button>⌄ 24 jam</button></div></div><BioChart logs={logs} /></div><div className="side-stack"><PhForm onDataAdded={loadData} /><div className="met-card"><div className="panel-heading"><div><span className="eyebrow">BIOELECTROCHEMISTRY</span><h2>Indikator MET</h2></div><span className="trend">↗ 12.6%</span></div><div className="met-meter"><div className="meter-ring"><b>82</b><small>/ 100</small></div><div><b>Aktivitas tinggi</b><p>Lonjakan daya terdeteksi setelah suplementasi molase.</p></div></div></div></div></div><div className="bottom-grid"><div className="insight-panel"><div className="panel-heading"><div><span className="eyebrow">PHASE DETECTION</span><h2>Fase pertumbuhan kultur</h2></div><span className="tag">● Live</span></div><div className="phase-track"><span className="phase done">Adaptasi</span><span className="phase current">Eksponensial</span><span className="phase">Stasioner</span></div><p>Output meningkat konsisten selama 6 jam terakhir. Kultur diperkirakan memasuki fase eksponensial.</p></div><div className="quick-panel"><span className="eyebrow">SYSTEM HEALTH</span><h2>Semua sistem normal <span>✓</span></h2><div className="health-line"><span>ESP32</span><b>Online</b><span>WiFi -58 dBm</span></div><div className="health-line"><span>Sensor</span><b>4 / 4</b><span>Terhubung</span></div></div></div></>}</div></div></main>;
 }
