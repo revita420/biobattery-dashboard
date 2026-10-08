@@ -38,25 +38,20 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { data: recentLogs } = await supabase
-      .from('bio_logs')
-      .select('voltage, current, power, temp, ph, molase')
-      .order('created_at', { ascending: false })
-      .limit(20);
-    const latestLog = recentLogs?.find((log) =>
-      [log.voltage, log.current, log.power, log.temp].some((value) => value != null && value !== 0),
-    ) ?? recentLogs?.[0];
+    const payload: Record<string, unknown> = {
+      ph: body.ph ?? null,
+      molase: body.molase ?? '',
+    };
+    const sensorFields = ['voltage', 'current', 'power', 'temp'] as const;
+    const hasSensorValue = sensorFields.some((field) => body[field] != null);
 
-    const { data, error } = await supabase.from('bio_logs').insert([
-      {
-        voltage: body.voltage ?? latestLog?.voltage ?? 0,
-        current: body.current ?? latestLog?.current ?? 0,
-        power: body.power ?? latestLog?.power ?? 0,
-        temp: body.temp ?? latestLog?.temp ?? 0,
-        ph: body.ph ?? latestLog?.ph ?? null,
-        molase: body.molase ?? latestLog?.molase ?? '',
-      },
-    ]);
+    if (hasSensorValue) {
+      for (const field of sensorFields) {
+        if (body[field] != null) payload[field] = body[field];
+      }
+    }
+
+    const { data, error } = await supabase.from('bio_logs').insert([payload]);
 
     if (error) throw error;
 
