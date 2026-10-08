@@ -8,4 +8,4 @@ export interface BioLog {
   molase?: string;
 }
 
-export type View = 'Dashboard' | 'Log Data' | 'Catatan Lab' | 'Notifikasi' | 'Hardware' | 'Analisis';
+export type View = 'Dashboard' | 'Log Data' | 'Catatan Lab';

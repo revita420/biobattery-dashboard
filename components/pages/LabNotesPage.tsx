@@ -13,7 +13,7 @@ interface LabRecord {
   leachate_condition?: string;
 }
 
-export default function LabNotesPage() {
+export default function LabNotesPage({ searchQuery = '' }: { searchQuery?: string }) {
   const [noteForm, setNoteForm] = useState({ activity: 'Penambahan substrat', date: '', detail: '' });
   const [reportForm, setReportForm] = useState({ molase: '', pollutantEstimate: '', leachateNote: '' });
   const [saving, setSaving] = useState<'note' | 'report' | null>(null);
@@ -42,26 +42,18 @@ export default function LabNotesPage() {
     return () => window.clearTimeout(initialLoad);
   }, []);
 
-  const noteHistory = history.filter((record) => record.note_detail);
-  const reportHistory = history.filter((record) => record.molase_amount || record.pollutant_estimate || record.leachate_condition);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const matchesSearch = (record: LabRecord) => !normalizedQuery || Object.values(record).some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+  const noteHistory = history.filter((record) => record.note_detail && matchesSearch(record));
+  const reportHistory = history.filter((record) => (record.molase_amount || record.pollutant_estimate || record.leachate_condition) && matchesSearch(record));
 
   const save = async (event: FormEvent<HTMLFormElement>, type: 'note' | 'report') => {
     event.preventDefault();
     setSaving(type);
     setMessages((current) => ({ ...current, [type]: '' }));
-
-    // Pemetaan nama kolom disesuaikan dengan database Supabase
-    const body = type === 'note' 
-      ? { 
-          activity_type: noteForm.activity, 
-          created_at: noteForm.date ? new Date(noteForm.date).toISOString() : new Date().toISOString(), 
-          note_detail: noteForm.detail 
-        } 
-      : { 
-          molase_amount: reportForm.molase, 
-          pollutant_estimate: reportForm.pollutantEstimate, 
-          leachate_condition: reportForm.leachateNote 
-        };
+    const body = type === 'note'
+      ? { activity_type: noteForm.activity, created_at: noteForm.date ? new Date(noteForm.date).toISOString() : new Date().toISOString(), note_detail: noteForm.detail }
+      : { molase_amount: reportForm.molase, pollutant_estimate: reportForm.pollutantEstimate, leachate_condition: reportForm.leachateNote };
 
     try {
       const response = await fetch('/api/lab-notes', { 
@@ -73,21 +65,14 @@ export default function LabNotesPage() {
       
       if (!response.ok || !result.success) throw new Error(result.error || 'Gagal menyimpan data');
       
-      setMessages((current) => ({ 
-        ...current, 
-        [type]: type === 'note' ? 'Catatan berhasil disimpan.' : 'Laporan berhasil disimpan.' 
-      }));
-
+      setMessages((current) => ({ ...current, [type]: type === 'note' ? 'Catatan berhasil disimpan.' : 'Laporan berhasil disimpan.' }));
       if (type === 'note') setNoteForm({ activity: 'Penambahan substrat', date: '', detail: '' });
       else setReportForm({ molase: '', pollutantEstimate: '', leachateNote: '' });
       await loadHistory();
     } catch (error) {
-      setMessages((current) => ({ 
-        ...current, 
-        [type]: error instanceof Error ? error.message : 'Gagal menyimpan data.' 
-      }));
+      setMessages((current) => ({ ...current, [type]: error instanceof Error ? error.message : 'Gagal menyimpan data.' }));
     } finally { 
-      setSaving(null); 
+      setSaving(null);
     }
   };
 
@@ -125,25 +110,13 @@ export default function LabNotesPage() {
           </button>
           {messages.note && <p className="save-message">{messages.note}</p>}
         </form>
-
         <form className="form-panel" onSubmit={(event) => void save(event, 'report')}>
           <span className="eyebrow">MOLASE & BIOREMEDIASI</span>
           <h2>Suplementasi molase</h2>
-          <label>
-            Jumlah molase
-            <input type="text" placeholder="10 ml" value={reportForm.molase} onChange={(event) => setReportForm({ ...reportForm, molase: event.target.value })} required />
-          </label>
-          <label>
-            Estimasi penurunan polutan
-            <input type="text" placeholder="mis. COD turun 12%" value={reportForm.pollutantEstimate} onChange={(event) => setReportForm({ ...reportForm, pollutantEstimate: event.target.value })} required />
-          </label>
-          <label>
-            Catatan penggantian air lindi
-            <textarea placeholder="Volume dan kondisi lindi..." value={reportForm.leachateNote} onChange={(event) => setReportForm({ ...reportForm, leachateNote: event.target.value })} required />
-          </label>
-          <button type="submit" className="dark-button" disabled={saving !== null}>
-            {saving === 'report' ? 'Menyimpan...' : 'Simpan laporan'}
-          </button>
+          <label>Jumlah molase<input type="text" placeholder="10 ml" value={reportForm.molase} onChange={(event) => setReportForm({ ...reportForm, molase: event.target.value })} required /></label>
+          <label>Estimasi penurunan polutan<input type="text" placeholder="mis. COD turun 12%" value={reportForm.pollutantEstimate} onChange={(event) => setReportForm({ ...reportForm, pollutantEstimate: event.target.value })} required /></label>
+          <label>Catatan penggantian air lindi<textarea placeholder="Volume dan kondisi lindi..." value={reportForm.leachateNote} onChange={(event) => setReportForm({ ...reportForm, leachateNote: event.target.value })} required /></label>
+          <button type="submit" className="dark-button" disabled={saving !== null}>{saving === 'report' ? 'Menyimpan...' : 'Simpan laporan'}</button>
           {messages.report && <p className="save-message">{messages.report}</p>}
         </form>
       </div>
@@ -154,16 +127,15 @@ export default function LabNotesPage() {
         </button>
       </div>
       {historyError && <p className="save-message">{historyError}</p>}
-      {!historyError && <div className="two-column lab-history-grid">
+      {!historyError && <div className="lab-history-grid">
         <div className="table-panel lab-history-panel">
           <span className="eyebrow">EXPERIMENT NOTE</span>
           <h2>Riwayat catatan eksperimen</h2>
-          {noteHistory.length === 0 ? <p className="empty-history">Belum ada catatan eksperimen.</p> : <table><thead><tr><th>Tanggal</th><th>Aktivitas</th><th>Detail</th></tr></thead><tbody>{noteHistory.map((record, index) => <tr key={record.id ?? `${record.created_at}-${index}`}><td>{record.created_at ? new Date(record.created_at).toLocaleDateString('id-ID') : '-'}</td><td>{record.activity_type || '-'}</td><td>{record.note_detail || '-'}</td></tr>)}</tbody></table>}
+          {noteHistory.length === 0 ? <p className="empty-history">{normalizedQuery ? 'Data tidak ditemukan' : 'Belum ada catatan eksperimen.'}</p> : <table><thead><tr><th>Tanggal</th><th>Aktivitas</th><th>Detail</th></tr></thead><tbody>{noteHistory.map((record, index) => <tr key={record.id ?? `${record.created_at}-${index}`}><td>{record.created_at ? new Date(record.created_at).toLocaleDateString('id-ID') : '-'}</td><td>{record.activity_type || '-'}</td><td>{record.note_detail || '-'}</td></tr>)}</tbody></table>}
         </div>
         <div className="table-panel lab-history-panel">
-          <span className="eyebrow">MOLASE & BIOREMEDIASI</span>
-          <h2>Riwayat laporan molase</h2>
-          {reportHistory.length === 0 ? <p className="empty-history">Belum ada laporan molase.</p> : <table><thead><tr><th>Waktu</th><th>Molase</th><th>Estimasi polutan</th><th>Kondisi lindi</th></tr></thead><tbody>{reportHistory.map((record, index) => <tr key={record.id ?? `${record.created_at}-${index}`}><td>{record.created_at ? new Date(record.created_at).toLocaleDateString('id-ID') : '-'}</td><td>{record.molase_amount || '-'}</td><td>{record.pollutant_estimate || '-'}</td><td>{record.leachate_condition || '-'}</td></tr>)}</tbody></table>}
+          {(!normalizedQuery || reportHistory.length > 0) && <><span className="eyebrow">MOLASE & BIOREMEDIASI</span><h2>Riwayat laporan molase</h2></>}
+          {reportHistory.length === 0 ? <p className="empty-history">{normalizedQuery ? 'Data tidak ditemukan' : 'Belum ada laporan molase.'}</p> : <table><thead><tr><th>Waktu</th><th>Molase</th><th>Estimasi polutan</th><th>Kondisi lindi</th></tr></thead><tbody>{reportHistory.map((record, index) => <tr key={record.id ?? `${record.created_at}-${index}`}><td>{record.created_at ? new Date(record.created_at).toLocaleDateString('id-ID') : '-'}</td><td>{record.molase_amount || '-'}</td><td>{record.pollutant_estimate || '-'}</td><td>{record.leachate_condition || '-'}</td></tr>)}</tbody></table>}
         </div>
       </div>}
     </section>

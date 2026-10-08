@@ -1,3 +1,0 @@
-export default function NotificationsPage() {
-  return <section className="subpage"><div className="page-heading"><div><span className="eyebrow">WORKSPACE / NOTIFIKASI</span><h1>Pusat notifikasi & alarm</h1><p>Perhatian otomatis dari sistem bio-battery.</p></div></div><div className="alert-list"><div className="alert-item urgent"><b>Suhu lindi melonjak</b><span>DS18B20 membaca 39.4 °C, di atas rentang mesofilik.</span><time>12 menit lalu</time></div><div className="alert-item warning"><b>Tegangan turun drastis</b><span>Output turun 18% dalam 5 menit terakhir.</span><time>1 jam lalu</time></div><div className="alert-item resolved"><b>Sistem kembali stabil</b><span>Koneksi sensor pulih dan data kembali masuk.</span><time>Kemarin</time></div></div></section>;
-}
