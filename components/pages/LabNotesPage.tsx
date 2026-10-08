@@ -17,11 +17,13 @@ export default function LabNotesPage() {
   const [noteForm, setNoteForm] = useState({ activity: 'Penambahan substrat', date: '', detail: '' });
   const [reportForm, setReportForm] = useState({ molase: '', pollutantEstimate: '', leachateNote: '' });
   const [saving, setSaving] = useState<'note' | 'report' | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [messages, setMessages] = useState({ note: '', report: '' });
   const [history, setHistory] = useState<LabRecord[]>([]);
   const [historyError, setHistoryError] = useState('');
 
   const loadHistory = async () => {
+    setLoadingHistory(true);
     try {
       const response = await fetch('/api/lab-notes');
       const result = await response.json();
@@ -30,6 +32,8 @@ export default function LabNotesPage() {
       setHistoryError('');
     } catch (error) {
       setHistoryError(error instanceof Error ? error.message : 'Gagal mengambil riwayat lab');
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -145,7 +149,9 @@ export default function LabNotesPage() {
       </div>
       <div className="panel-heading lab-history-heading">
         <div><span className="eyebrow">ACTIVITY HISTORY</span><h2>Riwayat tersimpan</h2></div>
-        <button type="button" className="outline-button" onClick={() => void loadHistory()}>↻ Refresh</button>
+        <button type="button" className="outline-button" onClick={() => void loadHistory()} disabled={loadingHistory}>
+          {loadingHistory ? 'Memuat...' : '↻ Refresh'}
+        </button>
       </div>
       {historyError && <p className="save-message">{historyError}</p>}
       {!historyError && <div className="two-column lab-history-grid">
