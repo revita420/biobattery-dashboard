@@ -1,15 +1,27 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+const PAGE_SIZE = 1000;
+
 // 1. Ambil seluruh data dari Supabase (diurutkan berdasarkan waktu dibuat)
 export async function GET() {
-  const { data, error } = await supabase
-    .from('bio_logs')
-    .select('*')
-    .order('created_at', { ascending: true });
+  const data = [];
+  let offset = 0;
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  while (true) {
+    const { data: page, error } = await supabase
+      .from('bio_logs')
+      .select('*')
+      .order('created_at', { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    data.push(...page);
+    if (page.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
   }
 
   let previousSensorValues = { voltage: 0, current: 0, power: 0, temp: 0 };
